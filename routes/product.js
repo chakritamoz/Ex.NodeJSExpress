@@ -27,7 +27,8 @@ router.get('/',async (req,res) => {
     const products = await Product.find();
 
     res.render('./pages/', {
-      products: products
+      products: products,
+      title: "Home"
     });
   } catch(err) {
     console.log(err);
@@ -35,14 +36,19 @@ router.get('/',async (req,res) => {
 });
 
 router.get('/manage', async (req, res) => {
-  try {
-    const products = await Product.find();
-    
-    res.render('./pages/manage.ejs', {
-      products: products
-    });
-  } catch(err) {
-    console.log(err);
+  if (req.cookies.signedin) {
+    try {
+      const products = await Product.find();
+      
+      res.render('./pages/manage.ejs', {
+        products: products,
+        title: "Managment"
+      });
+    } catch(err) {
+      console.log(err);
+    }
+  } else {
+    res.redirect('/signin');
   }
 });
 
@@ -59,29 +65,14 @@ router.get('/delete/:id', async (req, res) => {
 
 });
 
-router.get('/modify/:id', async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    
-    const doc = new Product({
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      description: product.description
-    });
-    
-    res.render('./pages/form.ejs', {
-      product: {}
-    });
-  } catch(err) {
-    res.render('./pages/404.ejs');
-  }
-});
-
 router.get('/insert', (req, res) => {
-  res.render('./pages/form.ejs', {
-    product: {}
-  });
+  if (req.cookies.signedin) {
+    res.render('./pages/form.ejs', {
+      ttile: "Add Product"
+    });
+  } else {
+    res.redirect('/signin');
+  }
 });
 
 router.post('/insert', upload.single("image"), async (req, res) => {
@@ -106,11 +97,12 @@ router.post('/edit', async(req, res) => {
   try {
     const product = await Product.findOne({_id: prodId});
     res.render('./pages/edit.ejs', {
-      product: product
+      product: product,
+      title: "Edit Product"
     });
   } catch(err) {
     console.log(err);
-    res.render('./pages/404.ejs');
+    res.render('./pages/404.ejs', {title: "404 Not Found"});
   }
 });
 
@@ -123,9 +115,30 @@ router.post('/update', async (req, res) => {
   }
   try {
     await Product.findByIdAndUpdate(prodId, product, {useFindAndModify: false});
-    res.redirect('/manage')
+    res.redirect('/manage');
   } catch(err) { 
-    res.render('./pages/404.ejs');
+    res.render('./pages/404.ejs', {title: "404 Not Found"});
+  }
+});
+
+router.get('/signin', (req, res) => {
+  res.render('./pages/signin.ejs', {
+    title: "Sign In"
+  });
+});
+
+router.post('/signin', (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+  const limitTime = 10000;
+
+  if (username === "admin" && password === "1234") {
+    res.cookie("username", username, {maxAge: limitTime});
+    res.cookie("password", password, {maxAge: limitTime});
+    res.cookie("signedin", true, {maxAge: limitTime});
+    res.redirect('/manage');
+  } else {
+    res.render()
   }
 });
 
@@ -133,11 +146,12 @@ router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findOne({_id: req.params.id});
     res.render('./pages/product.ejs', {
-      product: product
+      product: product,
+      title: "Product Details"
     });
   } catch(err) {
     console.log(err);
-    res.render('/pages/404.ejs');
+    res.render('./pages/404.ejs');
   }
 });
 
